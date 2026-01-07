@@ -1,0 +1,80 @@
+package codsoftpackage;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+public class CurrencyConverter 
+
+    {public static void main(String[] args) 
+       {String API_URL="https://v6.exchangerate-api.com/v6/1a9ee296117d9093d5135846/latest/INR";
+		try {
+            System.out.println("Attempting to connect to the API..."); 
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder() 
+                .uri(URI.create(API_URL)) 
+                .header("User-Agent", "Java Currency Converter App/1.0")
+                .GET()                                   
+                .build();
+            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            
+            int statusCode = response.statusCode();
+            String rawResponseData = response.body();
+            
+            System.out.println("API Status Code: " + response.statusCode());
+            System.out.println("Raw Response Data:\n" + response.body());
+            
+            if (statusCode == 200) {
+                convertCurrency(rawResponseData);
+            } else {
+                System.out.println("\n🚫 Conversion failed due to API error. Please check your key or quota.");
+            }
+
+        } catch (IOException | InterruptedException e) {
+            System.out.println("An error occurred during the API request.");
+            e.printStackTrace();
+        }
+	}
+	
+	public static void convertCurrency(String rawResponseData) {
+        Scanner scanner = new Scanner(System.in);
+        String targetCurrencyCode;
+        double amountToConvert;
+        
+        System.out.println("\n--- Currency Conversion Ready ---");
+        System.out.println("Base Currency: INR");
+        System.out.print("Enter Target Currency Code (e.g., USD, EUR, AUD): ");
+        targetCurrencyCode = scanner.nextLine().toUpperCase();
+        System.out.print("Enter Amount in INR to convert: ");
+        
+        while (!scanner.hasNextDouble()) 
+           {System.out.print("Invalid amount. Please enter a number: ");
+            scanner.next();}
+        amountToConvert = scanner.nextDouble();
+        try {
+            JsonObject rootObject = JsonParser.parseString(rawResponseData).getAsJsonObject();
+            
+            JsonObject conversionRates = rootObject.getAsJsonObject("conversion_rates");
+            
+            double exchangeRate = conversionRates.get(targetCurrencyCode).getAsDouble();
+       
+            double convertedAmount = amountToConvert * exchangeRate;
+            
+            System.out.println("\n--- Final Result ---");
+            System.out.printf("1 INR is equal to %.6f %s\n", exchangeRate, targetCurrencyCode);
+            System.out.printf("Result: %.2f INR is equal to %.2f %s\n", amountToConvert, convertedAmount, targetCurrencyCode);
+           
+        } catch (NullPointerException e) {
+            System.err.println("\nError: The currency code '" + targetCurrencyCode + "' was not found in the list.");
+            System.err.println("Please enter a valid currency code from the API response.");
+        } catch (Exception e) {
+            System.err.println("An unexpected error occurred during calculation: " + e.getMessage());
+        } finally {
+            scanner.close(); 
+        }
+	}
+}
